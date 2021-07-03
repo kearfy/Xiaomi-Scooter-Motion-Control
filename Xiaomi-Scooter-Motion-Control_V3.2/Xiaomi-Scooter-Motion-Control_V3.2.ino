@@ -10,12 +10,22 @@
 // +-============================================================================-+
 
 //Defines how much km/u is detected as a kick.
-const int speedBump = 1;
+const int speedBump = 3;
 
-//Defines what the minimal increasement every kick should make.
-const int minimumSpeedIncreasement = 5;
+//Defines what the minimal increasement in km/u every kick should make.
+const int minimumSpeedIncreasment = 7;
 
-//Minimum and maximum speed of your scooter. (You can currently use this for just one mode)
+//Defines how much percent the speedBump should go down per km in speed. (it's harder to speed up when driving 20km/u.
+const float lowerSpeedBump = 0.988;
+
+//Recommended lowerSpeedBump values for different speedBumps.
+// 1: 1.0;
+// 2: 0.986;
+// 3: 0.988;
+// 4: 0.993;
+// 5: 0.9935;
+
+//Minimum and maximum speed of your scooter. (You can currently use this firmware in just one mode)
 const int minimumSpeed = 7;
 const int maximumSpeed = 27;
 
@@ -29,10 +39,10 @@ const int kicksBeforeIncreasment = 2;
 const int breakTriggered = 47;
 
 //Defines how long one kick should take.
-const int drivingTime = 8000;
+const int drivingTime = 5000;
 
 //Defines how much time the amount of kicks before increasment can take up.
-const int kickResetTime = 2000;
+const int kickResetTime = 1500;
 
 //Defines the amount of time the INCREASING state will wait for a new kick.
 const int increasmentTime = 2000;
@@ -55,22 +65,23 @@ SoftwareSerial SoftSerial(2, 3); // RX, TX
 // |-========================== !!! DO NOT EDIT !!! =============================-|
 // +-============================================================================-+
 
-
+//All the different timers.
 auto drivingTimer = timer_create_default();
 auto kickResetTimer = timer_create_default();
 auto increasmentTimer = timer_create_default();
 
-int BrakeHandle;
-int Speed; //current speed
-int temporarySpeed = 0;
-int expectedSpeed = 0;
-int kickCount = 0;
+int BrakeHandle;          //Status of the brake handle.
+int Speed;                //current speed
+int temporarySpeed = 0;   //Expected speed in INCREASINGSTATE.
+int expectedSpeed = 0;    //Expected speed in DRIVINGSTATE.
+int kickCount = 0;        //To track the amount of kicks.
 
-int historyTotal = 0;
-int history[historySize];
-int historyIndex = 0;
-int averageSpeed = 0;
+int historyTotal = 0;     //Sum of the history.
+int history[historySize]; //History of speeds.
+int historyIndex = 0;     //Current index in the history.
+int averageSpeed = 0;     //Average speed based on the history.
 
+//Speedrange. Used for throttlewrite calculations.
 const int speedRange = maximumSpeed - minimumSpeed;
 
 
@@ -183,6 +194,7 @@ void loop() {
     //Recalculate the average speed.
     averageSpeed = historyTotal / historySize;
 
+    //Trigger motion control, tick all timers.
     motion_control();
     drivingTimer.tick();
     kickResetTimer.tick();
@@ -198,6 +210,8 @@ void motion_control() {
     if (BrakeHandle > breakTriggered) {
         ThrottleWrite(45); //close throttle directly when break is touched. 0% throttle
         digitalWrite(LED_PCB, HIGH);
+
+        //If the script isn't in the BREAKINGSTATE yet, switch over and cancel all timers.
         if (State != BREAKINGSTATE) {
             State = BREAKINGSTATE;
             drivingTimer.cancel();
@@ -209,19 +223,41 @@ void motion_control() {
         digitalWrite(LED_PCB, LOW);
     }
 
+    Serial.println("SPEED");
+    Serial.println(Speed);
+    Serial.println("AVERAGE SPEED");
+    Serial.println(Speed);
+
+    if (State == INCREASINGSTATE) {
+        Serial.println("TEMPORARY SPEED");
+        Serial.println(temporarySpeed);
+    } else {
+        Serial.println("EXPECTED SPEED");
+        Serial.println(expectedSpeed);
+    }
+
+    Serial.println(' ');
+    Serial.println(' ');
+
+    //Action based on the current state.
     switch(State) {
         case READYSTATE:
+            //If the current speed exceeds the minimum speed required to throttle, start throttle.
             if (Speed > startThrottle) {
+                //If vehicle is already moving faster than the minimum speed, Go above minimum speed.
                 if (Speed > minimumSpeed) {
+                    //If the average speed is higher than the actual speed the vehicle probably just recovered from a break. Go with the average speed.
                     if (averageSpeed > Speed) {
                         temporarySpeed = averageSpeed;
                     } else {
+                        //Else, just go with the current speed.
                         temporarySpeed = Speed;
                     }
                 } else {
                     temporarySpeed = minimumSpeed;
                 }
-                
+
+                //Start throttle, move over to increasing state to give the driver room to speed up.
                 ThrottleSpeed(temporarySpeed);
                 State = INCREASINGSTATE;
                 Serial.println("INCREASING ~> The speed has exceeded the minimum throttle speed.");
@@ -229,39 +265,49 @@ void motion_control() {
 
             break;
         case INCREASINGSTATE:
-            if (Speed >= temporarySpeed + speedBump) {
+            //If the Speed is lower than the expected temporary speed + calculated speedbump required to speed up, add kick and disable the increasementTimer.
+            if (Speed >= temporarySpeed + calculateSpeedBump(temporarySpeed)) {
                 kickCount++;
                 increasmentTimer.cancel();
-            } else if (averageSpeed >= Speed && kickCount < 1) {
+            } else if (averageSpeed >= temporarySpeed && kickCount < 1) {
+                //If the speed has stabilized, start the increasementTimer to eventually switch over to DRIVINGSTATE.
                 increasmentTimer.in(increasmentTime, endIncrease);
             }
 
+            //If one or more kicks have been made, increase the (also the expected) temporary speed.
             if (kickCount >= 1) {
-                if (Speed > temporarySpeed + minimumSpeedIncreasement) {
+                //If the current speed exceeds the expected temporary speed AND the minimum speed increasment, go with the current speed.
+                if (Speed > temporarySpeed + minimumSpeedIncreasment) {
                     temporarySpeed = ValidateSpeed(Speed);
                 } else {
-                    temporarySpeed = ValidateSpeed(temporarySpeed + minimumSpeedIncreasement);
+                    temporarySpeed = ValidateSpeed(temporarySpeed + minimumSpeedIncreasment);
                 }
 
+                //Start new throttle.
                 ThrottleSpeed(temporarySpeed);
             }
 
+            //Reset the kickcount every loop.
             kickCount = 0;
             break;
         case DRIVINGSTATE:
-            if (Speed >= expectedSpeed + speedBump) {
+            //If the speed exceeds the expected speed + calculated speedbump, add kick and reset kickResetTimer.
+            if (Speed >= expectedSpeed + calculateSpeedBump(expectedSpeed)) {
                 kickCount++;
                 kickResetTimer.cancel();
                 kickResetTimer.in(kickResetTime, resetKicks);
             }
 
+            //If kickCount exceeds or is equal to kicksBeforeIncreasement, increase speed and bump over to INCREASINGSTATE.
             if (kickCount >= kicksBeforeIncreasment) {
-                if (Speed > expectedSpeed + minimumSpeedIncreasement) {
+                //If the current speed exceeds the expected speed AND the minimum speed increasment, go with the current speed.
+                if (Speed > expectedSpeed + minimumSpeedIncreasment) {
                     temporarySpeed = ValidateSpeed(Speed);
                 } else {
-                    temporarySpeed = ValidateSpeed(expectedSpeed + minimumSpeedIncreasement);
+                    temporarySpeed = ValidateSpeed(expectedSpeed + minimumSpeedIncreasment);
                 }
 
+                //Start new throttle, update State and cancel timers.
                 ThrottleSpeed(temporarySpeed);
                 State = INCREASINGSTATE;
                 drivingTimer.cancel();
@@ -271,17 +317,20 @@ void motion_control() {
 
             break;
         case BREAKINGSTATE:
+            //If BrakeHandle is still being triggerd, move on.
             if (BrakeHandle > breakTriggered) break;
+
+            //If speed has dropped, move back to READYSTATE.
             if (Speed < startThrottle) {
                 State = READYSTATE;
                 Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
-            } else if (Speed >= averageSpeed + speedBump) {
-                if (Speed > averageSpeed + minimumSpeedIncreasement) {
-                    temporarySpeed = ValidateSpeed(Speed);
-                } else {
-                    temporarySpeed = ValidateSpeed(averageSpeed + speedBump);
-                }
 
+            //If speed has increased over the averageSpeed + calculated speedBump, start throttling again.
+            } else if (Speed >= averageSpeed + calculateSpeedBump(averageSpeed)) {
+
+                //Don't apply minimumSpeadIncreasment here. Handle was most likely pulled to lower the speed.
+                //Instead, move over to INCREASINGSTATE to let the driver increase speed if wanted.
+                temporarySpeed = ValidateSpeed(Speed);
                 ThrottleSpeed(temporarySpeed);
                 State = INCREASINGSTATE;
                 Serial.println("INCREASING ~> Break released and speed increased.");
@@ -289,6 +338,7 @@ void motion_control() {
             
             break;
         default:
+            //Unknown state! Activate breaks and move over to BREAKINGSTATE to automatically resolve the issue.
             ThrottleWrite(45);
             digitalWrite(LED_PCB, HIGH);
             State = BREAKINGSTATE;
@@ -300,10 +350,22 @@ void motion_control() {
 
 }
 
+int calculateSpeedBump(int requestedSpeed) {
+    float calculatedSpeedBump = (float) speedBump;
+    for (int i = 0; i < requestedSpeed; i++) {
+        calculatedSpeedBump = calculatedSpeedBump * (float) lowerSpeedBump;
+    }
+    
+    return round(calculatedSpeedBump);
+}
+
+//Reset the kicks. Used as function for the resetKicksTimer.
 int resetKicks() {
     kickCount = 0;
 }
 
+//Stop increasing speed of the vehicle, move over to DRIVINGSTATE.
+//Used for the increasmentTimer.
 int endIncrease() {
     expectedSpeed = temporarySpeed;
     kickCount = 0;
@@ -312,6 +374,8 @@ int endIncrease() {
     Serial.println("DRIVING ~> The speed has been stabilized.");
 }
 
+//Stop throttling, cancel timers and move over to READYSTATE.
+//Used for the drivingTimer.
 int endDrive() {
     drivingTimer.cancel();
     kickResetTimer.cancel();
@@ -320,6 +384,7 @@ int endDrive() {
     Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
 }
 
+//Validate that the speed is between the minimum and maximum speed.
 int ValidateSpeed(int requestedSpeed) {
     if (requestedSpeed < minimumSpeed) {
         return minimumSpeed;
@@ -330,6 +395,7 @@ int ValidateSpeed(int requestedSpeed) {
     }
 }
 
+//Calculate the throttle for the ThrottleWrite function. Based on the requestedSpeed, maximum speed and the throttleRange (maxSpeed - minSpeed).
 int ThrottleSpeed(int requestedSpeed) {
     if (requestedSpeed == 0) {
         ThrottleWrite(45);
@@ -337,11 +403,12 @@ int ThrottleSpeed(int requestedSpeed) {
         ThrottleWrite(233);
     } else {
         int throttleRange = 233 - 45;
-        float calculatedThrottle = requestedSpeed / (float) maximumSpeed * throttleRange;
+        float calculatedThrottle = (requestedSpeed + 4) / (float) maximumSpeed * throttleRange;
         ThrottleWrite((int) calculatedThrottle);
     }
 }
 
+//Instruct the vehicle at which speed it should drive.
 int ThrottleWrite(int value) {
     if (value != 0) {
         analogWrite(THROTTLE_PIN, value);

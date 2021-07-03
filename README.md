@@ -29,6 +29,46 @@ An Arduino Nano will be used to read out the serial-bus of the Xiaomi Mi Scooter
 The speedometer will be monitored if there are any kicks with your feed. When there is a kick, the throttle will be opened to 100% for 8 seconds and then goes to 10% (0% is regen breaking).
 When the brakehandle is being touched the throttle will be released immediately. Also the Mi scooter itself disables the throttle also in case of braking.
 
+# This fork
+
+I have made this fork to challenge myself in writing a custom firmware for my Xiaomi Mi Essential, but mainly to customize the functionality to my needs.
+
+The fork is based of off [Glenn's V1.3](https://github.com/PsychoMnts/Xiaomi-Scooter-Motion-Control/blob/main/Xiaomi-Scooter-Motion-Control_V1.3/Xiaomi-Scooter-Motion-Control_V1.3.ino). I chose to number my builds with V3 since this the third public variation to the firmware for the arduino.
+
+This firmware leaves behind the concept of different specified gears. Instead, the vehicle will adjust to the speed that you are going.
+
+Another aspect that makes this firmware stand out is that it is able to detect kicks while the vehicle is throttling. It does so by storing and comparing an expected speed to the actual speed of the vehicle. If the actual speed exceeds expected speed by a defined integer, it is registered as a kick.
+
+One kick while throttling will reset the driving timer, two kicks will put the vehicle into INCREASINGSTATE. Whilst in INCREASINGSTATE, the speed of the vehicle can be increased (duh...). When you speed the vehicle by making a kick, the vehicle will adjust to that new speed. If a defined time has passed by without the driver making a new kick, the vehicle will be put back into DRIVINGSTATE and the driving timer will be started again.
+The vehicle will also be switched to INCREASINGSTATE when you first start driving or after you have released the break and increasing speed.
+
+Once the driving timer has expired, the throttle will be released. When you make a new kick the vehicle will adjust to the averageSpeed of the past defined history of speeds recordings.
+
+# Issues
+
+The Arduino software will make a warning about the amount of dynamic memory that is taken up by the firmware (88% on the nano). This is because currently, unfortunately, the script uses three different arduino-timer instances. We hope to fix this in a future release but for now it's not a big issue. Due to this issue we don't recommend setting the historySize option too high.
+
+# Releases
+
+- V3.1
+    
+    This is the first release of V3 (This variation of the firmware).
+    It is a proof of concept and works unexpectedly well. The two issues that exist in this build are:
+    - that the expected speeds are not consistent with the actual speed obtain from the vehicle.
+    - and, and issue in the concept, that it's a little bit hard to speed up above 18 ~ 20km/u.
+
+- V3.2
+
+    The issues have been resolved. It is now possible to percentually lower the speedBump per km/u speed with the lowerSpeedBump option.
+
+    A few recommended values have been provided.
+
+# Other firmwares
+
+Feel free to try these other firmwares, I will try to include as many firmwares that are out there.
+
+- Glenn: https://github.com/PsychoMnts/Xiaomi-Scooter-Motion-Control
+- Jelle: https://github.com/jelzo/Xiaomi-Scooter-Motion-Control
 
 # Hardware
 
