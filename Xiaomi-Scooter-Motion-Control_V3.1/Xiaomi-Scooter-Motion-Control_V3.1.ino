@@ -8,19 +8,35 @@
 // |-================================ SETTINGS ==================================-|
 // +-============================================================================-+
 
+//Defines how much km/u is detected as a kick.
 const int speedBump = 1;
+
+//Defines what the minimal increasement every kick should make.
 const int minimumSpeedIncreasement = 5;
 
+//Minimum and maximum speed of your scooter. (You can currently use this for just one mode)
 const int minimumSpeed = 7;
 const int maximumSpeed = 27;
 
+//Minimum speed before throtteling
 const int startThrottle = 5;
+
+//Amount of kicks it takes to switch over the INCREASING state.
 const int kicksBeforeIncreasment = 2;
+
+//Don't touch unless you know what you are doing.
 const int breakTriggered = 47;
 
+//Defines how long one kick should take.
 const int drivingTime = 8000;
+
+//Defines how much time the amount of kicks before increasment can take up.
 const int kickResetTime = 2000;
+
+//Defines the amount of time the INCREASING state will wait for a new kick.
 const int increasmentTime = 2000;
+
+//used to calculate the average speed.
 const int historySize = 20;
 
 // Arduino pin where throttle is connected to (only pin 9 & 10 is ok to use)
@@ -34,6 +50,8 @@ SoftwareSerial SoftSerial(2, 3); // RX, TX
 
 // +-============================================================================-+
 // |-=============================== VARIABLES ==================================-|
+// +-============================================================================-+
+// |-========================== !!! DO NOT EDIT !!! =============================-|
 // +-============================================================================-+
 
 
