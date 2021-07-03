@@ -1,0 +1,55 @@
+Every loop we get the following two variables:
+- brakeHandle
+- speed
+
+Usually the driver is pulling the brake once BrakeHandle > 47
+The Speed is calculated every loop.
+
+
+CONCEPT
+
+The concept is for the speed to increase as you go.
+When the driver starts kicking the vehicle will start at a minimum speed. At this point the vehicle will be in an INCREASING state.
+while the vehicle is the INCREASING state it will take the driver 1 kick to speed the vehicle to it's desired speed.
+Once the average speed of the vehicle is stabilized to the temporary speed, the temporary speed will be pushed over to the expected speed. The state will be set to DRIVING.
+
+If the driver wants to speed up while in the DRIVING state, the driver will have to speed up X amount of times (kicksBeforeIncreasement) before the vehicle will be pushed back into the INCREASING state.
+If the driver were to make a single kick, the timer will be reset.
+
+After a certain amount of time between the minimumDrivingTime and the maximumDrivingTime, the vehicle will stop throtteling automatically.
+The driver will have to make a kick based on the kickBump for the vehicle to be pushed into the INCREASING state.
+Once this happens, the temporarySpeed will be set to a speed between the current speed and the expected speed.
+From that speed, the driver can speed up to it's original speed as desired.
+Once the average speed of the vehicle is stabilized to the temporary speed, the temporary speed will be pushed over to the expected speed. The state will be set to DRIVING.
+
+Once the brake handle is pulled, the vehicle will stop throtteling.
+If the brake handle has been released and the driver starts increasing speed again, the vehicle will be pushed into the INCREASING state.
+Once this happens, the temporarySpeed will be set to the current speed.
+From that speed, the driver can speed up to it's original speed as desired.
+Once the average speed of the vehicle is stabilized to the temporary speed, the temporary speed will be pushed over to the expected speed. The state will be set to DRIVING.
+
+
+SETTINGS
+- speedBump:						The amount that the speed has to increase over the $expectedSpeed to take the following speed: ($speed - $expectedSpeed < $minimumSpeedIncreasement ? $expectedSpeed + $minimumSpeedIncreasement : $speed)
+- minimumSpeedIncreasement:			The minimum speed increasement.
+- historySize:						The amount of history readings to remember.
+- minimumSpeed:						The lowest speed the vehicle should drive.
+- maximumSpeed:						The highest speed the vehicle can drive.
+- startThrottle:					The required speed for the vehicle to throttle.
+- kicksBeforeIncreasement:			The amount of kicks it takes for the vehicle to speed up.
+- minimumDrivingTime:				The smallest amount of time before the vehicle will stop throtteling.
+- maximumDrivingTime:				The greatest amount of time before the vehicle will stop throtteling.
+- drivingTimeRange:                 The range between the minimumDrivingTime and the maximumDrivingTime.
+- speedRange:                       The range between the minimumSpeed and the maximumSpeed.
+
+VARIABLES
+- BrakeHandle:      data from the brake.
+- Speed:            The current speed.
+- temporarySpeed:	The speed the vehicle should be driving while increasing speed.
+- expectedSpeed:	The speed that the vehicle is currently expected to drive.
+
+- history:			The past speed readings.
+- historyTotal:     The sum of history;
+- historyIndex:     The current index in the history.
+- averageSpeed:		The average speed based on the history.
+
