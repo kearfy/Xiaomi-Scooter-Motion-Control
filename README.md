@@ -1,4 +1,13 @@
-# Xiaomi-Scooter-Motion-Control
+# This is a fork! If you have already read this stuff in the original repo by PsychoMnts / Glenn, this is what was added in the README:
+- [This fork](#this-fork)
+- [Issues](#issues)
+- [Releases](#releases)
+
+### **Please use the 3.4 release and configure baseThrottle (ln. 27) accordingly to the comments!**
+
+Thanks :)
+
+## Xiaomi-Scooter-Motion-Control
 Modification to legalise the Xiaomi Mi Scooters in The Netherlands.
 
 The idea is to make an small hardware modification on the Xiaomi scooters so they comply with the Dutch law. 
@@ -19,9 +28,11 @@ The best scooter to do this modification is the Xiaomi Mi Electric Scooter Essen
 - The motor is 250 watts
 - Max speed is 20 km/h, which is already fast to give push offs with your feet.
 
+Check out [stepombouw.nl](https://stepombouw.nl) for more information and guides!
+
 # Librarys
 
-- https://github.com/contrem/arduino-timer
+- https://github.com/contrem/arduino-timer (For 3.1 and 3.2)
 
 # How it works
 
@@ -39,6 +50,8 @@ This firmware leaves behind the concept of different specified gears. Instead, t
 
 Another aspect that makes this firmware stand out is that it is able to detect kicks while the vehicle is throttling. It does so by storing and comparing an expected speed to the actual speed of the vehicle. If the actual speed exceeds expected speed by a defined integer, it is registered as a kick.
 
+**The following section is configurable. Can be set to one kick aswell.**
+
 One kick while throttling will reset the driving timer, two kicks will put the vehicle into INCREASINGSTATE. Whilst in INCREASINGSTATE, the speed of the vehicle can be increased (duh...). When you speed the vehicle by making a kick, the vehicle will adjust to that new speed. If a defined time has passed by without the driver making a new kick, the vehicle will be put back into DRIVINGSTATE and the driving timer will be started again.
 The vehicle will also be switched to INCREASINGSTATE when you first start driving or after you have released the break and increasing speed.
 
@@ -46,7 +59,7 @@ Once the driving timer has expired, the throttle will be released. When you make
 
 # Issues
 
-The Arduino software will make a warning about the amount of dynamic memory that is taken up by the firmware (88% on the nano). This is because currently, unfortunately, the script uses three different arduino-timer instances. We hope to fix this in a future release but for now it's not a big issue. Due to this issue we don't recommend setting the historySize option too high.
+(3.4) Some false kicks may occur, we are working on the optimal calculatedSpeed in the ThrottleSpeed function. Additonally, a variant with PID support is in the making so that the vehicle will better adjust to the expected speed.
 
 # Releases
 
@@ -63,12 +76,27 @@ The Arduino software will make a warning about the amount of dynamic memory that
 
     A few recommended values have been provided.
 
+- V3.3
+
+    Skipped due to the amount of issues.
+
+- V3.4
+
+    - Added a option to set a minimum speed for when the minimumSpeedIncreasment will fire at first.
+    - Added baseThrottle and additionalSpeed to be able to easily adjust the calculatedSpeed within ThrottleSpeed.
+    - Added a kickDelay. This is the minimum time before another kick can be registered again.
+    - Switched to timers based on the millis() function. No memory exhaustion anymore!
+    - Added a DRIVEOUTSTATE to prevent false kicks after the boost has expired.
+    - Probably more changes, cleaned up a lot of stuff.
+
+
 # Other firmwares
 
 Feel free to try these other firmwares, I will try to include as many firmwares that are out there.
 
 - Glenn: https://github.com/PsychoMnts/Xiaomi-Scooter-Motion-Control
 - Jelle: https://github.com/jelzo/Xiaomi-Scooter-Motion-Control
+- Job: https://github.com/mysidejob/step-support 
 
 # Hardware
 
