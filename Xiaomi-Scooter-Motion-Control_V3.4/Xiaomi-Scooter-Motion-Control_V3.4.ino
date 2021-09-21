@@ -18,7 +18,7 @@ const int minimumSpeedIncreasment = 5;
 const int enforceMinimumSpeedIncreasmentFrom = 16;
 
 //Defines how much percent the speedBump should go down per km in speed. (it's harder to speed up when driving 20km/u.)
-const float lowerSpeedBump = 1;
+const float lowerSpeedBump = 0.9875;
 
 //Define the base throttle. between 0 and 45. 
 // ESSENTIAL & 1S: 0
