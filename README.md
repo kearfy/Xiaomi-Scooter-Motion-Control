@@ -2,6 +2,7 @@
 - [This fork](#this-fork)
 - [Issues](#issues)
 - [Releases](#releases)
+- [Custom Telegram group](#custom-telegram-group)
 
 ### **Please use the 3.4 release and configure baseThrottle (ln. 27) accordingly to the comments!**
 
@@ -39,6 +40,13 @@ Check out [stepombouw.nl](https://stepombouw.nl) for more information and guides
 An Arduino Nano will be used to read out the serial-bus of the Xiaomi Mi Scooter.
 The speedometer will be monitored if there are any kicks with your feed. When there is a kick, the throttle will be opened to 100% for 8 seconds and then goes to 10% (0% is regen breaking).
 When the brakehandle is being touched the throttle will be released immediately. Also the Mi scooter itself disables the throttle also in case of braking.
+
+# Custom telegram group
+
+I have created a custom telegram group for questions and the development specially for my V3.X fork of off the original software. This way I hope to reduce the amount of unnessacery messages for the "overall" / "main" group and forward them to the "V3.X group".
+
+- [Main group](https://t.me/joinchat/IuIjHecjckhK1h-a)
+- [This fork](https://t.me/scooter_motion_control_v3)
 
 # This fork
 
@@ -88,6 +96,12 @@ Once the driving timer has expired, the throttle will be released. When you make
     - Switched to timers based on the millis() function. No memory exhaustion anymore!
     - Added a DRIVEOUTSTATE to prevent false kicks after the boost has expired.
     - Probably more changes, cleaned up a lot of stuff.
+
+- V3.4.1
+
+    - Changed default value for lowerSpeedBump to 0.9875 since kicks at higher speeds were impossible.
+    - Added forgetSpeed since you could currently drive out from 25km/u to 6km/u, make a kick and go full speed again.
+    - Made small changes in the behaviour of the DRIVEOUTSTATE.
 
 
 # Other firmwares
