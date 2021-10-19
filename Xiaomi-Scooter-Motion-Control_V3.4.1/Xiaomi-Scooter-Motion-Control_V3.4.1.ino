@@ -393,7 +393,7 @@ int ThrottleSpeed(int requestedSpeed) {
 
 int ThrottleWrite(int value) {
     if (value < 45) {
-        analogWrite(THROTTLE_PIN, 233);
+        analogWrite(THROTTLE_PIN, 45);
     } else if (value > 233) {
         analogWrite(THROTTLE_PIN, 233);
     } else {      
