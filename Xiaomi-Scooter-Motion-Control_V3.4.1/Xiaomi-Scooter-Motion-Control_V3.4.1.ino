@@ -20,6 +20,9 @@ const int enforceMinimumSpeedIncreasmentFrom = 16;
 //Defines how much percent the speedBump should go down per km in speed. (it's harder to speed up when driving 20km/u.)
 const float lowerSpeedBump = 0.9875;
 
+//After how many X amount of km/u dropped, should the remembered speed to catch up to be forgotten.
+const int forgetSpeed = 8;
+
 //Define the base throttle. between 0 and 45. 
 // ESSENTIAL & 1S: 0
 // PRO 1:          20
@@ -296,6 +299,12 @@ void motion_control() {
         case BREAKINGSTATE:
         case DRIVEOUTSTATE:
             if (BrakeHandle > breakTriggered) break;
+            if (State == DRIVEOUTSTATE && Speed + forgetSpeed <= expectedSpeed) {
+                Serial.println("DRIVEOUT ~> Speed has dropped too far under expectedSpeed. Dumping expected speed.");
+                expectedSpeed = 0;
+            }
+
+
             if (Speed < startThrottle) {
                 State = READYSTATE;
                 Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
@@ -304,7 +313,11 @@ void motion_control() {
                     if (Speed > averageSpeed + calculateMinimumSpeedIncreasment(Speed)) {
                         temporarySpeed = ValidateSpeed(Speed);
                     } else {
-                        temporarySpeed = ValidateSpeed(expectedSpeed);
+                        if (Speed > expectedSpeed) {
+                            temporarySpeed = ValidateSpeed(averageSpeed + calculateMinimumSpeedIncreasment(Speed));
+                        } else {
+                            temporarySpeed = ValidateSpeed(expectedSpeed);
+                        }
                     }
                 } else {
                     temporarySpeed = ValidateSpeed(Speed);
