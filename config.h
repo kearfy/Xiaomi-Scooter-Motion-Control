@@ -20,12 +20,21 @@ const int minimumSpeedIncreasment = 5;                  //Defines what the minim
 
 // THROTTLE BEHAVIOUR
 const int startThrottle = 5;                            //Minimum speed before throtteling, usually just 5.
-const int minimumSpeed = 5;                             //Minimum speed to drive at.
-const int maximumSpeed = 25;                            //Maximum speed that your scooter can drive at. This value does not have to be accurate but helps to initially drive near the requested speed.
-const int baseThrottle = 45;
-const int additionalSpeed = 0;
+const int minimumSpeed = 5;
+
+//PID TUNING
+const double kpHigh = 25;
+const double kiHigh = 25;
+const double kdHigh = 1;
+const int PIDSampleTimeHigh = 100;
+
+const double kpLow = 2;
+const double kiLow = 25;
+const double kdLow = 0;
+const int PIDSampleTimeLow = 200;
 
 // ADVANCED CONFIGURATION.
+const int extendLowRange = 1;
 const int historySize = 20;                             //How many past speed readings should be saved for average speed calculation.
 const int breakTriggered = 47;                          //Don't touch unless you know what you are doing.
 const int SERIAL_READ_PIN = 2;                          //Arduino pin to which the yellow wire is connected, used to read the scooter.

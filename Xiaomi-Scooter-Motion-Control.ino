@@ -1,23 +1,16 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "config.h"
+#include <PID_v1.h>
 
 // +-============================================================================-+
 // |-============================ SYSTEM VARIABLES ==============================-|
 // +-============================================================================-+
 
-unsigned long currentTime = 0;
-unsigned long drivingTimer = 0;
-unsigned long kickResetTimer = 0;
-unsigned long kickDelayTimer = 0;
-unsigned long increasmentTimer = 0;
+unsigned long currentTime, drivingTimer, kickResetTimer, kickDelayTimer, increasmentTimer = 0;
+double targetSpeed, speed, currentThrottle, brakeHandle;
+int temporarySpeed, expectedSpeed, kickCount = 0;
 bool kickAllowed = true;
-
-int BrakeHandle;
-int Speed; //current speed
-int temporarySpeed = 0;
-int expectedSpeed = 0;
-int kickCount = 0;
 
 int historyTotal = 0;
 int history[historySize];
@@ -32,8 +25,8 @@ uint8_t State = 0;
 #define BREAKINGSTATE 3
 #define DRIVEOUTSTATE 4
 
+PID speedController(&speed, &currentThrottle, &targetSpeed, kpHigh, kiHigh, kdHigh, DIRECT);
 SoftwareSerial SoftSerial(SERIAL_READ_PIN, 3);
-
 
 uint8_t readBlocking() {
     while (!SoftSerial.available()) delay(1);
@@ -48,25 +41,23 @@ void setup() {
 
     Serial.begin(115200);
     SoftSerial.begin(115200);
-    Serial.println("Starting Logging data...");
+    Serial.println("SYSTEM ~> Logs are now available.");
 
     TCCR1B = TCCR1B & 0b11111001; //Set PWM of PIN 9 & 10 to 32 khz
-    ThrottleWrite(45);
+    throttleWrite(45);
+    speedController.SetOutputLimits(45, 233);
+    speedController.SetSampleTime(PIDSampleTimeHigh);
 }
 
 uint8_t buff[256];
 void loop() {
-    int w = 0;
     while (readBlocking() != 0x55);
     if (readBlocking() != 0xAA) return;
-
     uint8_t len = readBlocking();
     buff[0] = len;
-
     if (len > 254) return;
     uint8_t addr = readBlocking();
     buff[1] = addr;
-
     uint16_t sum = len + addr;
     for (int i = 0; i < len; i++) {
         uint8_t curr = readBlocking();
@@ -78,21 +69,18 @@ void loop() {
     if (checksum != (sum ^ 0xFFFF)) return;
 
     //Do brake and speed readings
-    if (buff[1] == 0x20 && buff[2] == 0x65) BrakeHandle = buff[6];
-    if (buff[1] == 0x21 && buff[2] == 0x64 && buff[8] != 0) Speed = buff[8];
+    if (buff[1] == 0x20 && buff[2] == 0x65) brakeHandle = buff[6];
+    if (buff[1] == 0x21 && buff[2] == 0x64 && buff[8] != 0) speed = buff[8];
 
     //Update the current index in the history and recalculate the average speed.
     historyTotal = historyTotal - history[historyIndex];
-    history[historyIndex] = Speed;
+    history[historyIndex] = speed;
     historyTotal = historyTotal + history[historyIndex];
     historyIndex = historyIndex + 1;
     if (historyIndex >= historySize) historyIndex = 0;
 
     //Recalculate the average speed.
     averageSpeed = historyTotal / historySize;
-
-    //Actual motion control.
-    motion_control();
 
     //Validate running timers.
     currentTime = millis();
@@ -105,180 +93,161 @@ void loop() {
     } else {
         kickAllowed = false;
     }
+
+    //Actual motion control.
+    motion_control();
+    computePID();
 }
 
 void motion_control() {
-    if ((Speed != 0) && (Speed < startThrottle)) ThrottleWrite(45);             // If speed is under 5 km/h, stop throttle
-    if (BrakeHandle > breakTriggered) {                                         //close throttle directly when break is touched. 0% throttle
-        ThrottleWrite(45); 
-        digitalWrite(LED_PCB, HIGH);
+    if (speed < startThrottle) {
+        targetSpeed = 0;
+        if (speed != 0) { throttleWrite(45); currentThrottle = 45; }
+        if (State != READYSTATE) Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
+        State = READYSTATE;
+    }
+
+    if (brakeHandle > breakTriggered) { 
+        targetSpeed = 0;
+        currentThrottle = 45;                                        //close throttle directly when break is touched. 0% throttle
+        throttleWrite(45); 
+        speedController.SetMode(MANUAL);
         if (State != BREAKINGSTATE) {
             State = BREAKINGSTATE;
-            drivingTimer = 0; kickResetTimer = 0; increasmentTimer = 0;
+            drivingTimer = kickResetTimer = increasmentTimer = 0;
             Serial.println("BREAKING ~> Handle pulled.");
         }
-    } else {
-        digitalWrite(LED_PCB, LOW);
     }
 
     switch(State) {
         case READYSTATE:
-            if (Speed > startThrottle) {                    //Check if speed exeeds start throttle.
-                if (Speed > minimumSpeed) {
-                    if (averageSpeed > Speed) {             
-                        temporarySpeed = averageSpeed;      //Average speed is higher than current speed, adjust to that.
+            if (speed > startThrottle) {                    //Check if speed exeeds start throttle.
+                if (speed > minimumSpeed) {
+                    if (averageSpeed > speed) {             
+                        targetSpeed = averageSpeed;      //Average speed is higher than current speed, adjust to that.
                     } else {
-                        temporarySpeed = Speed;
+                        targetSpeed = speed;
                     }
                 } else {
-                    temporarySpeed = minimumSpeed;          //Set the expected speed to the minimum speed.
+                    targetSpeed = minimumSpeed;          //Set the expected speed to the minimum speed.
                 }
                 
-                ThrottleSpeed(temporarySpeed);
                 State = INCREASINGSTATE;
+                speedController.SetMode(AUTOMATIC);
                 Serial.println("INCREASING ~> The speed has exceeded the minimum throttle speed.");
             }
 
             break;
         case INCREASINGSTATE:
-            if (Speed >= temporarySpeed + calculateSpeedBump(temporarySpeed) && kickAllowed) {
-                kickCount++;
-                increasmentTimer = 0;
-                kickDelayTimer = currentTime;
-            } else if (averageSpeed >= Speed && kickCount < 1 && increasmentTimer == 0) {
+            if (speed >= temporarySpeed + calculateSpeedBump(temporarySpeed) && kickAllowed) {
                 increasmentTimer = currentTime;
-            }
-
-            if (kickCount >= 1) {
-                if (Speed > temporarySpeed + calculateMinimumSpeedIncreasment(Speed)) {
-                    temporarySpeed = ValidateSpeed(Speed);
-                } else {
-                    temporarySpeed = ValidateSpeed(temporarySpeed + calculateMinimumSpeedIncreasment(Speed));
-                }
-
-                ThrottleSpeed(temporarySpeed);
+                increaseSpeed();
+            } else if (averageSpeed >= speed && kickCount < 1 && increasmentTimer == 0) {
+                increasmentTimer = currentTime;
             }
 
             kickCount = 0;
             break;
         case DRIVINGSTATE:
-            if (Speed >= expectedSpeed + calculateSpeedBump(expectedSpeed) && kickAllowed) {
-                kickCount++;
-                drivingTimer = currentTime + increasmentTime;
-                kickResetTimer = currentTime;
-                kickDelayTimer = currentTime;
-            }
-
+            if (kickDetected()) drivingTimer = kickResetTimer = currentTime;
             if (kickCount >= kicksBeforeIncreasment) {
-                if (Speed > expectedSpeed + calculateMinimumSpeedIncreasment(Speed)) {
-                    temporarySpeed = ValidateSpeed(Speed);
-                } else {
-                    temporarySpeed = ValidateSpeed(expectedSpeed + calculateMinimumSpeedIncreasment(Speed));
-                }
-
-                ThrottleSpeed(temporarySpeed);
+                increaseSpeed();
                 State = INCREASINGSTATE;
-                drivingTimer = 0; kickResetTimer = 0;
+                drivingTimer = kickResetTimer = 0;
                 Serial.println("INCREASING ~> The least amount of kicks before increasment has been reached.");
             }
 
             break;
         case BREAKINGSTATE:
         case DRIVEOUTSTATE:
-            if (BrakeHandle > breakTriggered) break;
-            if (State == DRIVEOUTSTATE && Speed + forgetSpeed <= expectedSpeed) {
+            speedController.SetMode(MANUAL);
+            if (brakeHandle > breakTriggered) break;
+            if (State == DRIVEOUTSTATE && speed + forgetSpeed <= expectedSpeed) {
                 Serial.println("DRIVEOUT ~> Speed has dropped too far under expectedSpeed. Dumping expected speed.");
-                expectedSpeed = 0;
+                targetSpeed = 0;
             }
 
-
-            if (Speed < startThrottle) {
-                State = READYSTATE;
-                Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
-            } else if (Speed >= averageSpeed + calculateSpeedBump(Speed)) {
+            if (speed >= averageSpeed + calculateSpeedBump(speed)) {
                 if (State == DRIVEOUTSTATE) {
-                    if (Speed > averageSpeed + calculateMinimumSpeedIncreasment(Speed)) {
-                        temporarySpeed = ValidateSpeed(Speed);
+                    if (speed > averageSpeed + calculateMinimumSpeedIncreasment(speed)) {
+                        targetSpeed = validateSpeed(speed);
                     } else {
-                        if (Speed > expectedSpeed) {
-                            temporarySpeed = ValidateSpeed(averageSpeed + calculateMinimumSpeedIncreasment(Speed));
+                        if (speed > targetSpeed) {
+                            targetSpeed = validateSpeed(averageSpeed + calculateMinimumSpeedIncreasment(speed));
                         } else {
-                            temporarySpeed = ValidateSpeed(expectedSpeed);
+                            targetSpeed = validateSpeed(expectedSpeed);
                         }
                     }
                 } else {
-                    temporarySpeed = ValidateSpeed(Speed);
+                    targetSpeed = validateSpeed(speed);
                 }
 
                 kickDelayTimer = currentTime;
-                ThrottleSpeed(temporarySpeed);
                 State = INCREASINGSTATE;
-                Serial.println("INCREASING ~> Break released and speed increased.");
+                speedController.SetMode(AUTOMATIC);
+                Serial.println("INCREASING ~> Speed increased after brake or driveout.");
             }
             
             break;
         default:
-            ThrottleWrite(45);
-            digitalWrite(LED_PCB, HIGH);
+            targetSpeed = 0;
+            currentThrottle = 0;
+            throttleWrite(45);
             State = BREAKINGSTATE;
-            drivingTimer = 0; kickResetTimer = 0; increasmentTimer = 0;
+            drivingTimer = kickResetTimer = increasmentTimer = 0;
             Serial.println("BREAKING ~> Unknown state detected");
+            speedController.SetMode(MANUAL);
     }
 
 }
 
-int resetKicks() {
-    kickResetTimer = 0;
-    kickCount = 0;
+void resetKicks() {
+    kickResetTimer = kickCount = 0;
 }
 
-int endIncrease() {
-    expectedSpeed = temporarySpeed;
-    kickCount = 0;
+void endIncrease() {
     State = DRIVINGSTATE;
     drivingTimer = currentTime;
-    increasmentTimer = 0; kickResetTimer = 0;
+    kickCount = increasmentTimer = 0; kickResetTimer = 0;
     Serial.println("DRIVING ~> The speed has been stabilized.");
 }
 
-int endDrive() {
-    drivingTimer = 0; kickResetTimer = 0;
-    ThrottleWrite(45);
+void endDrive() {
+    drivingTimer = kickResetTimer = 0;
+    throttleWrite(45);
+    targetSpeed = 0;
+    currentThrottle = 0;
     State = DRIVEOUTSTATE;
-    Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
+    Serial.println("DRIVEOUT ~> Boost has expired.");
 }
 
-int calculateSpeedBump(int requestedSpeed) {
-  return round(speedBump * pow(lowerSpeedBump, requestedSpeed));
+bool kickDetected() {
+    bool result = speed >= targetSpeed + calculateSpeedBump(targetSpeed) && kickAllowed;
+    if (result) { kickCount++; kickDelayTimer = currentTime; }
+    return result;
 }
 
-int calculateMinimumSpeedIncreasment(int requestedSpeed) {
-    return (requestedSpeed > enforceMinimumSpeedIncreasmentFrom ? minimumSpeedIncreasment : 0);
+double calculateSpeedBump(double requestedSpeed) {
+    return (double) speedBump * pow(lowerSpeedBump, requestedSpeed);
 }
 
-int ValidateSpeed(int requestedSpeed) {
-    if (requestedSpeed < minimumSpeed) {
-        return minimumSpeed;
-    } else if (requestedSpeed > maximumSpeed) {
-        return maximumSpeed;
+double calculateMinimumSpeedIncreasment(double requestedSpeed) {
+    return (requestedSpeed > enforceMinimumSpeedIncreasmentFrom ? (double) minimumSpeedIncreasment : 0.0);
+}
+
+double validateSpeed(double requestedSpeed) {
+    return (requestedSpeed < minimumSpeed ? minimumSpeed : requestedSpeed);
+}
+
+void increaseSpeed() {
+    if (speed > targetSpeed + calculateMinimumSpeedIncreasment(targetSpeed)) {
+        targetSpeed = speed;
     } else {
-        return requestedSpeed;
+        targetSpeed += calculateMinimumSpeedIncreasment(targetSpeed);
     }
 }
 
-int ThrottleSpeed(int requestedSpeed) {
-    if (requestedSpeed <= 0) {
-        ThrottleWrite(45);
-    } else if (requestedSpeed >= maximumSpeed) {
-        ThrottleWrite(233);
-    } else {
-        int throttleRange = 233 - 45;
-        float calculatedThrottle = baseThrottle + ((requestedSpeed + additionalSpeed) / (float) maximumSpeed * throttleRange);
-        ThrottleWrite((int) calculatedThrottle);
-    }
-}
-
-int ThrottleWrite(int value) {
+int throttleWrite(int value) {
     if (value < 45) {
         analogWrite(THROTTLE_PIN, 45);
     } else if (value > 233) {
@@ -286,4 +255,17 @@ int ThrottleWrite(int value) {
     } else {      
         analogWrite(THROTTLE_PIN, value);
     }
+}
+
+void computePID() {
+    if (abs(targetSpeed - speed) <= calculateSpeedBump(targetSpeed) + extendLowRange) {
+        speedController.SetTunings(kpLow, kiLow, kdLow);
+        speedController.SetSampleTime(PIDSampleTimeLow);
+    } else {
+        speedController.SetTunings(kpHigh, kiHigh, kdHigh);
+        speedController.SetSampleTime(PIDSampleTimeHigh);
+    }
+
+    speedController.Compute();
+    if (State == INCREASINGSTATE || State == DRIVINGSTATE) throttleWrite((int) currentThrottle);
 }
