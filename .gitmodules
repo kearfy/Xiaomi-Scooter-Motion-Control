@@ -1,0 +1,5 @@
+[submodule "autotuner/"]
+	url = https://github.com/br3ttb/Arduino-PID-AutoTune-Library
+[submodule "autotuner"]
+	path = autotuner
+	url = https://github.com/br3ttb/Arduino-PID-AutoTune-Library
