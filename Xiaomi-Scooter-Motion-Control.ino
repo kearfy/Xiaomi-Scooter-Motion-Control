@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
-#include <config.h>
+#include "config.h"
 
 // +-============================================================================-+
 // |-============================ SYSTEM VARIABLES ==============================-|
@@ -31,6 +31,8 @@ uint8_t State = 0;
 #define DRIVINGSTATE 2
 #define BREAKINGSTATE 3
 #define DRIVEOUTSTATE 4
+
+SoftwareSerial SoftSerial(SERIAL_READ_PIN, 3);
 
 
 uint8_t readBlocking() {
