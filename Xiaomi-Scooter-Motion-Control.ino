@@ -2,15 +2,17 @@
 #include <SoftwareSerial.h>
 #include "config.h"
 #include <PID_v1.h>
+#include "autotuner/PID_AutoTune_v0/PID_AutoTune_v0.h"
 
 // +-============================================================================-+
 // |-============================ SYSTEM VARIABLES ==============================-|
 // +-============================================================================-+
 
-unsigned long currentTime, drivingTimer, kickResetTimer, kickDelayTimer, increasmentTimer = 0;
+unsigned long currentTime, drivingTimer, kickResetTimer, kickDelayTimer, increasmentTimer, autotuneTriggerTimer, autotuneProcedureTimer = 0;
 double targetSpeed, speed, currentThrottle, brakeHandle;
 int temporarySpeed, expectedSpeed, kickCount = 0;
 bool kickAllowed = true;
+bool autotunerActive = true;
 
 int historyTotal = 0;
 int history[historySize];
@@ -24,7 +26,9 @@ uint8_t State = 0;
 #define DRIVINGSTATE 2
 #define BREAKINGSTATE 3
 #define DRIVEOUTSTATE 4
+#define AUTOTUNER 5
 
+PID_ATune aTune(&speed, &currentThrottle);
 PID speedController(&speed, &currentThrottle, &targetSpeed, kpHigh, kiHigh, kdHigh, DIRECT);
 SoftwareSerial SoftSerial(SERIAL_READ_PIN, 3);
 
@@ -84,6 +88,7 @@ void loop() {
 
     //Validate running timers.
     currentTime = millis();
+    if (autotuneTriggerTimer != 0 && autotuneTriggerTimer + 10000) triggerAutotuner();
     if (kickResetTimer != 0 && kickResetTimer + kickResetTime < currentTime && State == DRIVINGSTATE) resetKicks();
     if (increasmentTimer != 0 && increasmentTimer + increasmentTime < currentTime && State == INCREASINGSTATE) endIncrease();
     if (drivingTimer != 0 && drivingTimer + drivingTime < currentTime && State == DRIVINGSTATE) endDrive();
@@ -96,15 +101,17 @@ void loop() {
 
     //Actual motion control.
     motion_control();
-    computePID();
+    if (!autotunerActive) computePID();
 }
 
 void motion_control() {
     if (speed < startThrottle) {
         targetSpeed = 0;
         if (speed != 0) { throttleWrite(45); currentThrottle = 45; }
-        if (State != READYSTATE) Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
-        State = READYSTATE;
+        if (State != BREAKINGSTATE && State != AUTOTUNER) {
+            if (State != READYSTATE) Serial.println("READY ~> Speed has dropped under the minimum throttle speed.");
+            State = READYSTATE;
+        }
     }
 
     if (brakeHandle > breakTriggered) { 
@@ -112,11 +119,16 @@ void motion_control() {
         currentThrottle = 45;                                        //close throttle directly when break is touched. 0% throttle
         throttleWrite(45); 
         speedController.SetMode(MANUAL);
-        if (State != BREAKINGSTATE) {
+        if (State != BREAKINGSTATE && State != AUTOTUNER) {
             State = BREAKINGSTATE;
             drivingTimer = kickResetTimer = increasmentTimer = 0;
             Serial.println("BREAKING ~> Handle pulled.");
         }
+
+        if (autotuneTriggerTimer == 0) autotuneTriggerTimer = currentTime;
+    } else {
+        if (State == BREAKINGSTATE && speed < startThrottle) State = READYSTATE;
+        autotuneTriggerTimer = 0;
     }
 
     switch(State) {
@@ -189,6 +201,36 @@ void motion_control() {
             }
             
             break;
+        case AUTOTUNER:
+            if (autotunerActive) {
+                if (aTune.Runtime() == 1) {
+                    targetSpeed = 0;
+                    currentThrottle = 0;
+                    kpHigh = aTune.GetKp();
+                    kiHigh = aTune.GetKi();
+                    kdHigh = aTune.GetKd();
+                    autotunerActive = false;
+                    State = BREAKINGSTATE;
+                    throttleWrite(45);
+                    speedController.SetMode(MANUAL);
+                } else {
+                    throttleWrite((int) currentThrottle);
+                }
+            } else if (speed > startThrottle) {
+                targetSpeed = 20;
+                autotunerActive = true;
+
+                aTune.SetControlType(1);
+                aTune.SetOutputStep(1);
+                aTune.SetLookbackSec(10);
+                aTune.SetNoiseBand(1);
+                
+                State = INCREASINGSTATE;
+                speedController.SetMode(AUTOMATIC);
+                Serial.println("INCREASING ~> The speed has exceeded the minimum throttle speed.");
+            }
+
+            break;
         default:
             targetSpeed = 0;
             currentThrottle = 0;
@@ -201,6 +243,14 @@ void motion_control() {
 
 }
 
+void triggerAutotuner() {
+    State = AUTOTUNER;
+    targetSpeed = 0;
+    throttleWrite(45);
+    speedController.SetMode(MANUAL);
+    autotuneTriggerTimer = 0;
+}
+
 void resetKicks() {
     kickResetTimer = kickCount = 0;
 }
@@ -208,7 +258,7 @@ void resetKicks() {
 void endIncrease() {
     State = DRIVINGSTATE;
     drivingTimer = currentTime;
-    kickCount = increasmentTimer = 0; kickResetTimer = 0;
+    kickCount = increasmentTimer = kickResetTimer = 0;
     Serial.println("DRIVING ~> The speed has been stabilized.");
 }
 

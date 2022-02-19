@@ -23,10 +23,10 @@ const int startThrottle = 5;                            //Minimum speed before t
 const int minimumSpeed = 5;
 
 //PID TUNING
-const double kpHigh = 25;
-const double kiHigh = 25;
-const double kdHigh = 1;
-const int PIDSampleTimeHigh = 100;
+double kpHigh = 25;
+double kiHigh = 25;
+double kdHigh = 1;
+int PIDSampleTimeHigh = 100;
 
 const double kpLow = 2;
 const double kiLow = 25;
