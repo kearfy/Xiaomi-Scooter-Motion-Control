@@ -24,9 +24,9 @@ const int minimumSpeed = 5;
 
 //PID TUNING
 double kpHigh = 25;
-double kiHigh = 25;
+double kiHigh = 15;
 double kdHigh = 1;
-int PIDSampleTimeHigh = 100;
+int PIDSampleTimeHigh = 1;
 
 const double kpLow = 2;
 const double kiLow = 25;

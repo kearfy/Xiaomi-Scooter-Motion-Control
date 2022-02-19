@@ -12,7 +12,7 @@ unsigned long currentTime, drivingTimer, kickResetTimer, kickDelayTimer, increas
 double targetSpeed, speed, currentThrottle, brakeHandle;
 int temporarySpeed, expectedSpeed, kickCount = 0;
 bool kickAllowed = true;
-bool autotunerActive = true;
+bool autotunerActive = false;
 
 int historyTotal = 0;
 int history[historySize];
@@ -88,7 +88,7 @@ void loop() {
 
     //Validate running timers.
     currentTime = millis();
-    if (autotuneTriggerTimer != 0 && autotuneTriggerTimer + 10000) triggerAutotuner();
+    if (autotuneTriggerTimer != 0 && autotuneTriggerTimer + 10000 < currentTime) triggerAutotuner();
     if (kickResetTimer != 0 && kickResetTimer + kickResetTime < currentTime && State == DRIVINGSTATE) resetKicks();
     if (increasmentTimer != 0 && increasmentTimer + increasmentTime < currentTime && State == INCREASINGSTATE) endIncrease();
     if (drivingTimer != 0 && drivingTimer + drivingTime < currentTime && State == DRIVINGSTATE) endDrive();
@@ -105,7 +105,7 @@ void loop() {
 }
 
 void motion_control() {
-    if (speed < startThrottle) {
+    if (speed < startThrottle && State != AUTOTUNER) {
         targetSpeed = 0;
         if (speed != 0) { throttleWrite(45); currentThrottle = 45; }
         if (State != BREAKINGSTATE && State != AUTOTUNER) {
@@ -126,6 +126,18 @@ void motion_control() {
         }
 
         if (autotuneTriggerTimer == 0) autotuneTriggerTimer = currentTime;
+        if (autotunerActive) {
+            aTune.Cancel();
+            Serial.println("BRAKE ~> Cancelled autotuner.");
+                    kpHigh = aTune.GetKp();
+                    kiHigh = aTune.GetKi();
+                    kdHigh = aTune.GetKd(); 
+                    Serial.println(kpHigh); 
+                    Serial.println(kiHigh); 
+                    Serial.println(kdHigh);
+                    autotunerActive = false;
+                    State = BREAKINGSTATE;
+        }
     } else {
         if (State == BREAKINGSTATE && speed < startThrottle) State = READYSTATE;
         autotuneTriggerTimer = 0;
@@ -203,31 +215,38 @@ void motion_control() {
             break;
         case AUTOTUNER:
             if (autotunerActive) {
-                if (aTune.Runtime() == 1) {
+                int result = aTune.Runtime();
+                if (result == 1) {
+                    Serial.println("TUNER ~> Finished.");
                     targetSpeed = 0;
                     currentThrottle = 0;
                     kpHigh = aTune.GetKp();
                     kiHigh = aTune.GetKi();
-                    kdHigh = aTune.GetKd();
+                    kdHigh = aTune.GetKd(); 
+                    Serial.println(kpHigh); 
+                    Serial.println(kiHigh); 
+                    Serial.println(kdHigh);
                     autotunerActive = false;
                     State = BREAKINGSTATE;
                     throttleWrite(45);
                     speedController.SetMode(MANUAL);
-                } else {
+                } else { 
+                    Serial.println(currentThrottle);
                     throttleWrite((int) currentThrottle);
                 }
             } else if (speed > startThrottle) {
                 targetSpeed = 20;
+                currentThrottle = 224;
+                throttleWrite(224);
                 autotunerActive = true;
 
                 aTune.SetControlType(1);
-                aTune.SetOutputStep(1);
-                aTune.SetLookbackSec(10);
-                aTune.SetNoiseBand(1);
+                aTune.SetOutputStep(30);
+                aTune.SetLookbackSec(5);
+                aTune.SetNoiseBand(5);
                 
-                State = INCREASINGSTATE;
                 speedController.SetMode(AUTOMATIC);
-                Serial.println("INCREASING ~> The speed has exceeded the minimum throttle speed.");
+                Serial.println("TUNER ~> The speed has exceeded the minimum throttle speed.");
             }
 
             break;
@@ -249,6 +268,7 @@ void triggerAutotuner() {
     throttleWrite(45);
     speedController.SetMode(MANUAL);
     autotuneTriggerTimer = 0;
+    Serial.println("TUNER ~> Autotune mode activated.");
 }
 
 void resetKicks() {
