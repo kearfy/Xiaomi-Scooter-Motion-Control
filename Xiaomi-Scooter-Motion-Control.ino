@@ -129,14 +129,15 @@ void motion_control() {
         if (autotunerActive) {
             aTune.Cancel();
             Serial.println("BRAKE ~> Cancelled autotuner.");
-                    kpHigh = aTune.GetKp();
-                    kiHigh = aTune.GetKi();
-                    kdHigh = aTune.GetKd(); 
-                    Serial.println(kpHigh); 
-                    Serial.println(kiHigh); 
-                    Serial.println(kdHigh);
-                    autotunerActive = false;
-                    State = BREAKINGSTATE;
+            kpHigh = aTune.GetKp();
+            kiHigh = aTune.GetKi();
+            kdHigh = aTune.GetKd(); 
+            Serial.println(kpHigh); 
+            Serial.println(kiHigh); 
+            Serial.println(kdHigh);
+            autotuneProcedureTimer = 0;
+            autotunerActive = false;
+            State = BREAKINGSTATE;
         }
     } else {
         if (State == BREAKINGSTATE && speed < startThrottle) State = READYSTATE;
@@ -218,7 +219,6 @@ void motion_control() {
                 int result = aTune.Runtime();
                 if (result == 1) {
                     Serial.println("TUNER ~> Finished.");
-                    targetSpeed = 0;
                     currentThrottle = 0;
                     kpHigh = aTune.GetKp();
                     kiHigh = aTune.GetKi();
@@ -229,24 +229,27 @@ void motion_control() {
                     autotunerActive = false;
                     State = BREAKINGSTATE;
                     throttleWrite(45);
-                    speedController.SetMode(MANUAL);
                 } else { 
                     Serial.println(currentThrottle);
                     throttleWrite((int) currentThrottle);
                 }
             } else if (speed > startThrottle) {
-                targetSpeed = 20;
-                currentThrottle = 224;
-                throttleWrite(224);
-                autotunerActive = true;
+                if (autotuneProcedureTimer == 0) {
+                    autotuneProcedureTimer = currentTime;
+                    currentThrottle = 139;
+                    throttleWrite(139);
 
-                aTune.SetControlType(1);
-                aTune.SetOutputStep(30);
-                aTune.SetLookbackSec(5);
-                aTune.SetNoiseBand(5);
-                
-                speedController.SetMode(AUTOMATIC);
-                Serial.println("TUNER ~> The speed has exceeded the minimum throttle speed.");
+                    aTune.SetControlType(1);
+                    aTune.SetOutputStep(47);
+                    aTune.SetLookbackSec(3);
+                    aTune.SetNoiseBand(5);
+                    
+                    speedController.SetMode(MANUAL);
+                    Serial.println("TUNER ~> The speed has exceeded the minimum throttle speed.");
+                } else if (autotuneProcedureTimer + 2000 < currentTime) {
+                    autotunerActive = true;
+                    autotuneProcedureTimer = 0;
+                }
             }
 
             break;
