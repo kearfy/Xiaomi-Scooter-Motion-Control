@@ -288,6 +288,7 @@ void endDrive() {
     targetSpeed = 0;
     currentThrottle = 0;
     State = DRIVEOUTSTATE;
+    speedController.SetMode(MANUAL);
     Serial.println("DRIVEOUT ~> Boost has expired.");
 }
 
