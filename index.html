@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="assets/app.css">
+
+        <title>Xiaomi Scooter Motion Control</title>
+    </head>
+    <body>
+        <div id="app">
+            <header>
+                <div class="background"></div>
+                <div class="header-content">
+                    <div>
+                        <h1>
+                            {{ app.location == '' ? "Xiaomi Scooter Motion Control" : app.location.substring(0, 1).toUpperCase() + app.location.substring(1).replace('-', ' ') }} 
+                        </h1>
+                        <h3>
+                            Except it's Kearfy's fork.
+                        </h3>
+                    </div>
+                </div>
+            </header>
+            <nav>
+                <div class="container">
+                    <div>
+                        <a href="#" :class:active="app.location == ''">
+                            Homepage
+                        </a>
+                    </div>
+    
+                    <div>
+                        <a href="#telegram" :class:active="app.location == 'telegram'"">
+                            Telegram
+                        </a>
+                        <a href="#release-notes" :class:active="app.location == 'release-notes'"">
+                            Release notes
+                        </a>
+                        <a href="#downloads" :class:active="app.location == 'downloads'"">
+                            Downloads
+                        </a>
+                        <a href="https://github.com/kearfy/Xiaomi-Scooter-Motion-Control" target="_blank">
+                            Github
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <div id="app-content">
+                <section id="homepage" :if="app.location == ''">
+                    <div class="container">
+                        <section id="_about-fork">
+                            <h2>
+                                About this fork
+                            </h2>
+    
+                            <p>
+                                Hi there, my name is Micha and I am actively developing software for the xiaomi scooter motion control modules. <br>
+                                The project has originally started by Glenn (<a href="https://github.com/PsychoMnts/Xiaomi-Scooter-Motion-Control" target="_blank">repo</a>), I continued on his work based off of the <a href="https://github.com/PsychoMnts/Xiaomi-Scooter-Motion-Control/blob/main/Xiaomi-Scooter-Motion-Control_V1.3/Xiaomi-Scooter-Motion-Control_V1.3.ino" target="_blank">V1.3 fork</a> and started the V3.X releases.
+
+                                <br><br>
+                                My fork contains many quality of live features including but not limited to:
+                            </p>
+
+                            <ul>
+                                <li>
+                                    Drives the speed that you kick yourself.
+                                </li>
+                                <li>
+                                    Allows you to make kicks while driving.
+                                </li>
+                                <li>
+                                    Makes the kicks easier and supports you better the faster you go.
+                                </li>
+                            </ul>
+                        </section>
+
+                        <section id="_install-legal">
+                            <h2>
+                                Installation & legal
+                            </h2>
+
+                            <p>
+                                For a great installation reference and the legal aspect of this project I kindly refer you to the <a href="https://stepombouw.nl" target="_blank">stepombouw.nl</a> website or to the main <a href="#telegram">telegram</a> group. <br>
+                                Documents to carry with you can also be found on <a href="https://stepombouw.nl/documenten" target="_blank">stepombouw.nl</a>.
+                            </p>
+                        </section>
+
+                        <section id="_other-options">
+                            <h2>
+                                Other options / forks
+                            </h2>
+
+                            <p>
+                                There are a few mentionably forks. I put them here as I believe that there is not a single best option for every use case. Maybe a different software works better for you than mine, and that is the most important thing in the end.
+                            </p>
+
+                            <ul>
+                                <li>
+                                    <a href="https://github.com/PsychoMnts/Xiaomi-Scooter-Motion-Control" target="_blank">Glenn (original)</a>: This is the original project from which many forks have evolved themselves.
+                                </li>
+                                <li>
+                                    <a href="https://www.stepombouw.nl/software/broncode-github">Job (very stable)</a>: Job is the one making most of the conversion kits. This is the software he flashes on to them by default.
+                                </li>
+                            </ul>
+                        </section>
+
+                        <section id="_configuration">
+                            <h2>
+                                Configuration
+                            </h2>
+
+                            <p>
+                                Here is an overview of the configuration options, what they do and the best value to configure them with. The options only hold for the latest release, but often they will be the same for older versions.
+                            </p>
+
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                Option
+                                            </th>
+                                            <th>
+                                                Default
+                                            </th>
+                                            <th>
+                                                Description
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr id="_configuration-speedBump" :class:active="app.sublocation == 'configuration-speedBump'">
+                                            <td>
+                                                speedBump
+                                            </td>
+                                            <td>
+                                                3
+                                            </td>
+                                            <td>
+                                                Defines how much km/u increasment is detected as a kick.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-minimumSpeedIncreasment" :class:active="app.sublocation == 'configuration-minimumSpeedIncreasment'">
+                                            <td>
+                                                minimumSpeedIncreasment
+                                            </td>
+                                            <td>
+                                                5
+                                            </td>
+                                            <td>
+                                                The least the speed should increase when a kick is made. <b>Only when enforced.</b>
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-enforceMinimumSpeedIncreasmentFrom" :class:active="app.sublocation == 'configuration-enforceMinimumSpeedIncreasmentFrom'">
+                                            <td>
+                                                enforceMinimumSpeedIncreasmentFrom
+                                            </td>
+                                            <td>
+                                                16
+                                            </td>
+                                            <td>
+                                                When surpassed, the above rule will be enforced.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-lowerSpeedBump" :class:active="app.sublocation == 'configuration-lowerSpeedBump'">
+                                            <td>
+                                                lowerSpeedBump
+                                            </td>
+                                            <td>
+                                                0.9875
+                                            </td>
+                                            <td>
+                                                Ensures that the speedBump will be lowered after certain speeds. <br> 
+                                                <i>speedBump * speed ^ lowerSpeedBump</i>
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-forgetSpeed" :class:active="app.sublocation == 'configuration-forgetSpeed'">
+                                            <td>
+                                                forgetSpeed
+                                            </td>
+                                            <td>
+                                                8
+                                            </td>
+                                            <td>
+                                                After how much speed has dropped should the target speed be forgotten.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-baseThrottle" :class:active="app.sublocation == 'configuration-baseThrottle'">
+                                            <td>
+                                                baseThrottle
+                                            </td>
+                                            <td>
+                                                45
+                                            </td>
+                                            <td>
+                                                Used in the speed / throttle calculation. <br>
+                                                <i>baseThrottle + ((requestedSpeed + additionalSpeed) / maximumSpeed * 188)</i>
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-additionalSpeed" :class:active="app.sublocation == 'configuration-additionalSpeed'">
+                                            <td>
+                                                additionalSpeed
+                                            </td>
+                                            <td>
+                                                0
+                                            </td>
+                                            <td>
+                                                Used in the speed / throttle calculation. <br>
+                                                <i>See calculation above.</i>
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-minimumSpeed" :class:active="app.sublocation == 'configuration-minimumSpeed'">
+                                            <td>
+                                                minimumSpeed
+                                            </td>
+                                            <td>
+                                                7
+                                            </td>
+                                            <td>
+                                                What is the minimum speed the vehicle should drive. Generally 2 km/u higher than actual value.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-maximumSpeed" :class:active="app.sublocation == 'configuration-maximumSpeed'">
+                                            <td>
+                                                maximumSpeed
+                                            </td>
+                                            <td>
+                                                27
+                                            </td>
+                                            <td>
+                                                What is the maximum speed the vehicle should drive. Generally 2 km/u higher than actual value.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-startThrottle" :class:active="app.sublocation == 'configuration-startThrottle'">
+                                            <td>
+                                                startThrottle
+                                            </td>
+                                            <td>
+                                                5
+                                            </td>
+                                            <td>
+                                                How much km/u should the vehicle surpass to start throttling.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-kicksBeforeIncreasment" :class:active="app.sublocation == 'configuration-kicksBeforeIncreasment'">
+                                            <td>
+                                                kicksBeforeIncreasment
+                                            </td>
+                                            <td>
+                                                1
+                                            </td>
+                                            <td>
+                                                How many kicks should be made before the vehicle should increase it's speed. Only applied in the <a href="#_states-DRIVING">driving</a> state.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-breakTriggered" :class:active="app.sublocation == 'configuration-breakTriggered'">
+                                            <td>
+                                                breakTriggered
+                                            </td>
+                                            <td>
+                                                47
+                                            </td>
+                                            <td>
+                                                Sensitivity of the brake handle. Only change if you know what you are doing!
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-drivingTime" :class:active="app.sublocation == 'configuration-drivingTime'">
+                                            <td>
+                                                drivingTime
+                                            </td>
+                                            <td>
+                                                5000
+                                            </td>
+                                            <td>
+                                                Defines how long one boost should last after a kick has been made.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-kickResetTime" :class:active="app.sublocation == 'configuration-kickResetTime'">
+                                            <td>
+                                                kickResetTime
+                                            </td>
+                                            <td>
+                                                2000
+                                            </td>
+                                            <td>
+                                                In what time span do multiple kicks need to be made before the counter is being reset.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-kickDelay" :class:active="app.sublocation == 'configuration-kickDelay'">
+                                            <td>
+                                                kickDelay
+                                            </td>
+                                            <td>
+                                                300
+                                            </td>
+                                            <td>
+                                                How much time must there be between two kicks. Filters out false kicks after a kick has been made.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-increasmentTime" :class:active="app.sublocation == 'configuration-increasmentTime'">
+                                            <td>
+                                                increasmentTime
+                                            </td>
+                                            <td>
+                                                2000
+                                            </td>
+                                            <td>
+                                                How long to wait for another kick before switching back to <a href="#_states-DRIVING">driving</a> state.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-historySize" :class:active="app.sublocation == 'configuration-historySize'">
+                                            <td>
+                                                historySize
+                                            </td>
+                                            <td>
+                                                20
+                                            </td>
+                                            <td>
+                                                Used to calculate the average speed.
+                                            </td>
+                                        </tr>
+                                        <tr id="_configuration-THROTTLE_PIN" :class:active="app.sublocation == 'configuration-THROTTLE_PIN'">
+                                            <td>
+                                                THROTTLE_PIN
+                                            </td>
+                                            <td>
+                                                10
+                                            </td>
+                                            <td>
+                                                Arduino pin where throttle is connected to (only pin 9 & 10 is ok to use)
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section id="_states">
+                            <h2>
+                                States
+                            </h2>
+
+                            <p>
+                                Explanation of the multiple states and how the vehicle will act when one is active.
+                            </p>
+
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                State
+                                            </th>
+                                            <th>
+                                                Description
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr id="_states-READY" :class:active="app.sublocation == 'states-READY'">
+                                            <td>
+                                                READY
+                                            </td>
+                                            <td>
+                                                The vehicle is waiting for the initial kick to be made and will switch over to the <a href="#_states-INCREASING">increasing</a> state.
+                                            </td>
+                                        </tr>
+                                        <tr id="_states-INCREASING" :class:active="app.sublocation == 'states-INCREASING'">
+                                            <td>
+                                                INCREASING
+                                            </td>
+                                            <td>
+                                                The vehicle is increasing in speed. The driver will need to make just a single kick to increase it's speed. If no kicks have been made in a <a href="#_configuration-increasmentTime">certain time</a>, the vehicle will switch over to the <a href="#_states-DRIVING">driving</a> state.
+                                            </td>
+                                        </tr>
+                                        <tr id="_states-DRIVING" :class:active="app.sublocation == 'states-DRIVING'">
+                                            <td>
+                                                DRIVING
+                                            </td>
+                                            <td>
+                                                The vehicle is driving at a fixed speed. When a driver makes a <a href="#_configuration-kicksBeforeIncreasment">certain amount of kicks</a> within a <a href="#_configuration-kickResetTime">certain time</a>, the vehicle will switch over to the <a href="#_states-INCREASING">increasing</a> state. If no kicks have been made after a <a href="#_configuration-drivingTime">certain time</a>, the vehicle will switch over to the <a href="#_states-DRIVEOUT">driveout</a> state.
+                                            </td>
+                                        </tr>
+                                        <tr id="_states-BREAKING" :class:active="app.sublocation == 'states-BREAKING'">
+                                            <td>
+                                                BREAKING
+                                            </td>
+                                            <td>
+                                                The vehicle's brake handle has been pulled and exceeds a <a href="#_configuration-breakTriggered">certain threshold</a>. While this is true the module will lower the throttle to 0% and wait for the brake handle to be released. Once the brake handle has been released and the speed exceeds the averageSpeed + speedBump, the vehicle will throttle the current speed and the vehicle will switch over to the <a href="#_states-INCREASING">increasing</a> state. In case the speed drops under the <a href="#_configuration-startThrottle">start speed</a> it will switch back to the <a href="#_states-READY">ready</a> state.
+                                            </td>
+                                        </tr>
+                                        <tr id="_states-DRIVEOUT" :class:active="app.sublocation == 'states-DRIVEOUT'">
+                                            <td>
+                                                DRIVEOUT
+                                            </td>
+                                            <td>
+                                                The vehicle has left the <a href="#_states-DRIVING">driving</a> state as the <a href="#_configuration-drivingTime">driving time</a> has exceeded. If the speed drops a <a href="#_configuration-forgetSpeed">certain amount</a>, the last driven speed will be forgotten and set to 0. If  the speed exceeds the averageSpeed + speedBump, the vehicle will throttle the current speed and the vehicle will switch over to the <a href="#_states-INCREASING">increasing</a> state. In case the speed drops under the <a href="#_configuration-startThrottle">start speed</a> it will switch back to the <a href="#_states-READY">ready</a> state.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+
+                <section id="telegram" :elseif="app.location == 'telegram'">
+                    <div class="container">
+                        <div class="tiles">
+                            <a href="https://t.me/joinchat/IuIjHecjckhK1h-a" target="_blank" class="tile">
+                                Original group
+                            </a>
+                            <a href="https://t.me/scooter_motion_control_v3" target="_blank" class="tile">
+                                Fork-specific group
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="release-notes" :elseif="app.location == 'release-notes'">
+                    <div class="container">
+                        <section id="release-notes_3.4.1">
+                            <h2>
+                                Version 3.4.1 <a href="#downloads_3.4.1">Download V3.4.1</a>
+                            </h2>
+
+                            <p>
+                                A few minor changes have been made, upgrading is not neccesary.
+                            </p>
+
+                            <ul>
+                                <li>Changed default value for lowerSpeedBump to 0.9875 since kicks at higher speeds were impossible.</li>
+                                <li>Added forgetSpeed since you could currently drive out from 25km/u to 6km/u, make a kick and go full speed again.</li>
+                                <li>Made small changes in the behaviour of the DRIVEOUTSTATE.</li>
+                            </ul>
+                        </section>
+                        <section id="release-notes_3.4">
+                            <h2>
+                                Version 3.4 <a href="#downloads_3.4">Download V3.4</a>
+                            </h2>
+
+                            <p>
+                                Skipped 3.3 due to number of issues. Upgrading is very much recommended.
+                            </p>
+
+                            <ul>
+                                <li>Added a option to set a minimum speed for when the minimumSpeedIncreasment will fire at first.</li>
+                                <li>Added baseThrottle and additionalSpeed to be able to easily adjust the calculatedSpeed within ThrottleSpeed.</li>
+                                <li>Added a kickDelay. This is the minimum time before another kick can be registered again.</li>
+                                <li>Switched to timers based on the millis() function. No memory exhaustion anymore!</li>
+                                <li>Added a DRIVEOUTSTATE to prevent false kicks after the boost has expired.</li>
+                                <li>Probably more changes, cleaned up a lot of stuff.</li>
+                            </ul>
+                        </section>
+                        <section id="release-notes_3.2">
+                            <h2>
+                                Version 3.2 <a href="#downloads_3.2">Download V3.2</a>
+                            </h2>
+
+                            <p>
+                                The issues have been resolved. It is now possible to percentually lower the speedBump per km/u speed with the lowerSpeedBump option.
+
+                                <br><br>
+                                A few recommended values have been provided.
+                            </p>
+                        </section>
+                        <section id="release-notes_3.1">
+                            <h2>
+                                Version 3.1 <a href="#downloads_3.1">Download V3.1</a>
+                            </h2>
+
+                            <p>
+                                This is the first release of V3 (This variation of the firmware). <br>
+                                It is a proof of concept and works unexpectedly well. The two issues that exist in this build are:
+                            </p>
+
+                            <ul>
+                                <li>that the expected speeds are not consistent with the actual speed obtain from the vehicle.</li>
+                                <li>and, and issue in the concept, that it's a little bit hard to speed up above 18 ~ 20km/u.</li>
+                            </ul>
+                        </section>
+                    </div>
+                </section>
+
+                <section id="downloads" :elseif="app.location == 'downloads'">
+                    <div class="container">
+                        <section id="downloads_latest">
+                            <h2>
+                                Latest version & instructions
+                            </h2>
+
+                            <p>
+                                Obviously, I encourage you to download the latest version of the software and to always keep it up to date.
+
+                                <br><br>
+                                For flashing instructions, I kindly refer you to <a href="https://www.stepombouw.nl/software" target="_blank">stepombouw.nl</a>.
+                            </p>
+
+                            <button @click="downloadVersion(downloads.slice(-1))">
+                                Download V{{downloads.slice(-1)}} from Github
+                            </button>
+                        </section>
+
+                        <section id="downloads_older">
+                            <h2>
+                                Older versions
+                            </h2>
+
+                            <p>
+                                <b>Disclaimer:</b> The use of older firmware version is strongly discouraged as they often contain bugs and don't act optimal.
+                            </p>
+
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                Version
+                                            </th>
+                                            <th>
+                                                Release notes
+                                            </th>
+                                            <th>
+                                                Download link
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr :for:reverse="version in downloads">
+                                            <td :bind:id="'downloads_' + version" :class:active="app.sublocation == version">
+                                                {{version}}
+                                            </td>
+                                            <td>
+                                                <a :bind:href="'#release-notes_' + version">
+                                                    View release notes ({{version}})
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a @click="downloadVersion(version)">
+                                                    Download {{version}}
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+
+                <section id="not-found" :else>
+                    404 page not found
+                </section>
+            </div>
+
+            <footer>
+
+            </footer>
+        </div>
+    </body>
+
+    <script src="/assets/app.js" type="module"></script>
+</html>
