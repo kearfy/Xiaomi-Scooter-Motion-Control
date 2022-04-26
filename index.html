@@ -27,7 +27,7 @@
                     </div>
                 </div>
             </header>
-            <nav>
+            <nav :class:open="nav.open">
                 <div class="container">
                     <div>
                         <a href="#" :class:active="app.location == ''">
@@ -35,14 +35,20 @@
                         </a>
                     </div>
     
+                    <label @click="this.nav.open = !nav.open">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </label>
+
                     <div>
-                        <a href="#telegram" :class:active="app.location == 'telegram'"">
+                        <a href="#telegram" :class:active="app.location == 'telegram'">
                             Telegram
                         </a>
-                        <a href="#release-notes" :class:active="app.location == 'release-notes'"">
+                        <a href="#release-notes" :class:active="app.location == 'release-notes'">
                             Release notes
                         </a>
-                        <a href="#downloads" :class:active="app.location == 'downloads'"">
+                        <a href="#downloads" :class:active="app.location == 'downloads'">
                             Downloads
                         </a>
                         <a href="https://github.com/kearfy/Xiaomi-Scooter-Motion-Control" target="_blank">
@@ -130,7 +136,7 @@
                                             <th>
                                                 Default
                                             </th>
-                                            <th>
+                                            <th class="huge">
                                                 Description
                                             </th>
                                         </tr>
@@ -358,7 +364,7 @@
                                             <th>
                                                 State
                                             </th>
-                                            <th>
+                                            <th class="huge">
                                                 Description
                                             </th>
                                         </tr>
@@ -524,10 +530,10 @@
                                             <th>
                                                 Version
                                             </th>
-                                            <th>
+                                            <th class="medium">
                                                 Release notes
                                             </th>
-                                            <th>
+                                            <th class="medium">
                                                 Download link
                                             </th>
                                         </tr>

@@ -7,6 +7,10 @@ const app = new Rable({
             sublocation: location.hash.substring(1).split('_')[1]
         },
 
+        nav: {
+            open: false
+        },
+
         downloads: [
             '3.1',
             '3.2',
@@ -23,6 +27,7 @@ const app = new Rable({
 app.mount('#app');
 
 window.addEventListener('hashchange', e => {
-    app.data.app.location    = location.hash.substring(1).split('_')[0];
-    app.data.app.sublocation = location.hash.substring(1).split('_')[1];
+    app.data.nav.open           = false;
+    app.data.app.location       = location.hash.substring(1).split('_')[0];
+    app.data.app.sublocation    = location.hash.substring(1).split('_')[1];
 });
