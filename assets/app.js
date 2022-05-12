@@ -16,7 +16,8 @@ const app = new Rable({
             '3.2',
             '3.4',
             '3.4.1',
-            '3.4.2'
+            '3.4.2',
+            '3.4.3'
         ],
 
         downloadVersion(version) {
